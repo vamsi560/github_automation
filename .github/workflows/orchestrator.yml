@@ -1,0 +1,54 @@
+﻿name: Solution Deployment Orchestrator
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      solutionA: ${{ steps.filter.outputs.solutionA }}
+      solutionB: ${{ steps.filter.outputs.solutionB }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            solutionA:
+              - 'SolutionA/**'
+              - 'Common/**'
+            solutionB:
+              - 'SolutionB/**'
+              - 'Common/**'
+
+  deploy-solution-a:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.solutionA == 'true'
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      project_path: SolutionA/src/SolutionA/SolutionA.csproj
+    secrets: inherit
+
+  deploy-solution-b:
+    needs:
+      - detect-changes
+      - deploy-solution-a
+    if: |
+      always() &&
+      (
+        needs.detect-changes.outputs.solutionA == 'true' ||
+        needs.detect-changes.outputs.solutionB == 'true'
+      )
+    uses: ./.github/workflows/reusable-deploy.yml
+    with:
+      project_path: SolutionB/src/SolutionB/SolutionB.csproj
+    secrets: inherit

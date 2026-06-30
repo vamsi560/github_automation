@@ -1,0 +1,35 @@
+﻿name: Reusable Solution Deployment
+
+on:
+  workflow_call:
+    inputs:
+      project_path:
+        required: true
+        type: string
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: DEV
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore ${{ inputs.project_path }}
+
+      - name: Build
+        run: dotnet build ${{ inputs.project_path }} --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test ${{ inputs.project_path }} --no-build
+
+      - name: Publish
+        run: dotnet publish ${{ inputs.project_path }} --configuration Release --output publish
+
+      - name: Deploy
+        run: echo "Deploying ${{ inputs.project_path }}"
